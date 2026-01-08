@@ -1,87 +1,112 @@
+import { Product, ShoppingCart } from "./models.js";
+
 // === GET DOM ELEMENTS ===
-var iconRemoveItem = document.getElementsByClassName("fa-minus-circle");
-var iconAddItem = document.getElementsByClassName("fa-plus-circle");
-var like = document.getElementsByClassName("fa-heart");
-var trash = document.getElementsByClassName("fa-trash-alt");
-var card = document.getElementsByClassName("card-body-0");
 
-var quantity = document.getElementsByClassName("quantity");
-var unitPrice = document.getElementsByClassName("unit-price");
+// New elements
+var modalCard = document.getElementById("modal-card");
+var openModalBtn = document.getElementById("openModalBtn");
+var closeModalBtn = document.getElementById("close-modal");
+var form = document.querySelector(".card-form");
+var listProduct = document.getElementById("list-products");
 var totalPrice = document.getElementById("total");
-
-var temp;
 
 // === CORE FUNCTIONS ===
 
-// Always recalc the total instead of maintaining a global state (avoids NaN or drift issues)
-function recalcTotal() {
-  let total = 0;
-  for (let i = 0; i < quantity.length; i++) {
-    let price = parseFloat(unitPrice[i].textContent) || 0;
-    let qte = parseInt(quantity[i].textContent) || 0;
-    total += price * qte; // recompute based on DOM state (source of truth)
+function closeModal() {
+  modalCard.style.display = "none";
+  console.log("modal closed");
+}
+
+closeModalBtn.addEventListener("click", closeModal);
+
+openModalBtn.addEventListener("click", displayModal);
+
+function displayModal() {
+  modalCard.style.display = "block";
+  console.log("modal opened");
+}
+
+form.addEventListener("submit", addProduct);
+
+//Creation of a global basket
+const cart = new ShoppingCart();
+
+// Add product to the cart
+function addProduct(event) {
+  console.log("Adding product...", event);
+  event.preventDefault();
+
+  const form = event.target;
+  const name = form.name.value;
+  const description = form.description.value;
+  const price = form.price.value;
+  const img = form.img.files[0];
+  const imageUrl = URL.createObjectURL(img);
+
+  const product = new Product(Date.now(), name, description, price, imageUrl);
+  console.log("Shopping Cart instance:", product);
+
+  // Ajout au panier global
+  cart.addItem(product);
+
+  console.log("Cart items:", cart.displayCartItems());
+
+  closeModal();
+  renderCart(); // si tu veux mettre à jour le DOM
+}
+
+function renderCart() {
+  listProduct.innerHTML = "";
+  cart.displayCartItems().forEach((item) => {
+    listProduct.innerHTML += `
+      <div class="card-body-0" data-id="${item.id}">
+        <div class="card" style="width: 18rem">
+          <img src="${item.imageUrl}" class="card-img-top" />
+          <div class="card-body">
+            <h5>${item.name}</h5>
+            <p>${item.description}</p>
+            <h4 class="unit-price">${item.price} $</h4>
+
+            <div>
+              <i class="fas fa-plus-circle"></i>
+              <span class="quantity">${item.quantity}</span>
+              <i class="fas fa-minus-circle"></i>
+            </div>
+
+            <div>
+              <i class="fas fa-trash-alt"></i>
+              <i class="fas fa-heart" style="color: ${ item.liked ? "red" : "black;"}"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  });
+
+  totalPrice.textContent = cart.getTotalPrice() + " $";
+}
+
+listProduct.addEventListener("click", (e) => {
+  const card = e.target.closest(".card-body-0");
+  if (!card) return;
+
+  const id = Number(card.dataset.id);
+
+  if (e.target.classList.contains("fa-plus-circle")) {
+    cart.increaseQuantity(id);
   }
-  totalPrice.textContent = total + " $";
-}
 
-// Prevents the user from decreasing below 0 (UX safeguard + visual feedback)
-function updateRemoveButton(i) {
-  if (parseInt(quantity[i].textContent) === 0) {
-    iconRemoveItem[i].style.opacity = "0.5";
-    iconRemoveItem[i].disabled = true; // semantic, even if <i> doesn’t really disable
-  } else {
-    iconRemoveItem[i].style.opacity = "1";
-    iconRemoveItem[i].disabled = false;
+  if (e.target.classList.contains("fa-minus-circle")) {
+    cart.decreaseQuantity(id);
   }
-}
 
-// === INIT STATE ===
-// Ensure "-" button reflects initial cart state
-for (let i = 0; i < quantity.length; i++) {
-  updateRemoveButton(i);
-}
+  if (e.target.classList.contains("fa-trash-alt")) {
+    cart.removeItemById(id);
+  }
 
-// === EVENTS ===
+  if (e.target.classList.contains("fa-heart")) {
+    cart.toggleLike(id);
+  }
 
-// Decrease quantity
-for (let i = 0; i < iconRemoveItem.length; i++) {
-  iconRemoveItem[i].onclick = function () {
-    let temp = parseInt(quantity[i].textContent);
-    if (temp > 0) {
-      quantity[i].textContent = temp - 1;
-      recalcTotal(); // avoids NaN: always recompute total from DOM
-      updateRemoveButton(i); // keep "-" button in sync
-    }
-  };
-}
-
-// Increase quantity
-for (let i = 0; i < iconAddItem.length; i++) {
-  iconAddItem[i].onclick = function () {
-    let temp = parseInt(quantity[i].textContent);
-    quantity[i].textContent = temp + 1;
-    recalcTotal();
-    updateRemoveButton(i); // "-" may now become active
-  };
-}
-
-// Toggle "like" → simplest way: color feedback (black ↔ red)
-for (let i = 0; i < like.length; i++) {
-  like[i].onclick = function () {
-    if (like[i].style.color === "red") {
-      like[i].style.color = "black";
-    } else {
-      like[i].style.color = "red";
-    }
-  };
-}
-
-// Remove item completely from the cart
-for (let i = 0; i < trash.length; i++) {
-  trash[i].onclick = function () {
-    if (confirm("Do you really want to delete this item?")) {
-      card[i].remove(); // remove DOM node = instant visual update
-      recalcTotal(); // recompute based on remaining items
-    }
-  };
-}
+  renderCart(); // 👈 INDISPENSABLE
+});
