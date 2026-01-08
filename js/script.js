@@ -2,7 +2,6 @@ import { Product, ShoppingCart } from "./models.js";
 
 // === GET DOM ELEMENTS ===
 
-// New elements
 var modalCard = document.getElementById("modal-card");
 var openModalBtn = document.getElementById("openModalBtn");
 var closeModalBtn = document.getElementById("close-modal");
@@ -31,7 +30,7 @@ form.addEventListener("submit", addProduct);
 //Creation of a global basket
 const cart = new ShoppingCart();
 
-// Add product to the cart
+// Add product to the shopping cart
 function addProduct(event) {
   console.log("Adding product...", event);
   event.preventDefault();
@@ -43,16 +42,12 @@ function addProduct(event) {
   const img = form.img.files[0];
   const imageUrl = URL.createObjectURL(img);
 
-  const product = new Product(Date.now(), name, description, price, imageUrl);
-  console.log("Shopping Cart instance:", product);
-
-  // Ajout au panier global
+  const product = new Product(Date.now(), name, description, price, imageUrl); // Create a new product  
   cart.addItem(product);
 
-  console.log("Cart items:", cart.displayCartItems());
 
   closeModal();
-  renderCart(); // si tu veux mettre à jour le DOM
+  renderCart(); // Update the DOM
 }
 
 function renderCart() {
@@ -108,5 +103,5 @@ listProduct.addEventListener("click", (e) => {
     cart.toggleLike(id);
   }
 
-  renderCart(); // 👈 INDISPENSABLE
+  renderCart(); // 👈 UPDATE THE DOM
 });
